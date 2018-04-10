@@ -1,24 +1,17 @@
 var img; // Declare variable 'img'.
-var pixelArray = [];
+var pixelArray = [],
+  originalPixelArray = [];
 var newPixels = [];
 var ready = false,
   done = false;
-
+var density;
 // MODES
 // 0 = rows
 // 1 = columns
 const mode = 0;
 
 // threshold for starting to sort. Higher #s sort earlier
-var blackThreshold = 100;
-
-function setup() {
-  createCanvas(720, 405);
-  img = loadImage('assets/moonwalk.jpg'); // Load the imageloadPixels();
-  slider = createSlider(10, 500, 100);
-  slider.position(10, 10);
-  slider.style('width', '80px');
-}
+var blackThreshold = 1;
 
 function rgbaArrayToPixelArray(array) {
   let pixelArray = [];
@@ -56,7 +49,7 @@ function sortWholeRow(row) {
 }
 
 function isBlack(pixel) {
-  return pixelValue(pixel) < slider.value();
+  return pixelValue(pixel) < blackThreshold;
 }
 
 function sortBlackMode(array) {
@@ -97,11 +90,22 @@ const transposeArray = function(arr, rows, cols) {
   return result;
 };
 
+function setup() {
+  density = displayDensity();
+  createCanvas(720, 405);
+  img = loadImage("assets/moonwalk.jpg"); // Load the imageloadPixels();
+  slider = createSlider(1, 500, blackThreshold);
+  slider.position(10, 400);
+  slider.style("width", "80px");
+}
+
 function draw() {
   image(img, 0, 0);
-  loadPixels();
+  if (!done) {
+    loadPixels();
 
-  pixelArray = rgbaArrayToPixelArray(pixels);
+    pixelArray = rgbaArrayToPixelArray(pixels);
+  }
 
   if (
     pixels[0] !== 0 &&
@@ -112,40 +116,48 @@ function draw() {
     ready = true;
   }
 
-  if (ready && !done && mode == 0) {
-    for (var i = 0; i < height; i++) {
+  if (ready && !done && mode == 0 && !mouseIsPressed) {
+    newPixels = [];
+    for (var i = 0; i < height * density; i++) {
       console.log(`row: ${i}`);
-      let row = pixelArray.slice(width * i, width * (i + 1));
+      let row = pixelArray.slice(
+        width * i * density,
+        width * (i + 1) * density
+      );
       newPixels = newPixels.concat(sortBlackMode(row));
     }
     newPixels = flatten(newPixels);
+    for (var i = 0; i < pixels.length; i++) {
+      pixels[i] = newPixels[i];
+    }
     done = true;
   }
 
-  if (ready && !done && mode == 1) {
-    pixelArray = transposeArray(pixelArray, height, width);
-    for (var i = 0; i < width; i++) {
+  if (ready && !done && mode == 1 && !mouseIsPressed) {
+    newPixels = [];
+    pixelArray = transposeArray(pixelArray, height * density, width * density);
+    for (var i = 0; i < width * density; i++) {
       console.log(`col: ${i}`);
-      let col = pixelArray.slice(height * i, height * (i + 1));
+      let col = pixelArray.slice(
+        height * i * density,
+        height * (i + 1) * density
+      );
       newPixels = newPixels.concat(sortBlackMode(col));
     }
-    newPixels = transposeArray(newPixels, width, height);
+    newPixels = transposeArray(newPixels, width * density, height * density);
     newPixels = flatten(newPixels);
-    done = true;
-  }
 
-  for (var i = 0; i < pixels.length; i++) {
-    pixels[i] = newPixels[i];
+    for (var i = 0; i < pixels.length; i++) {
+      pixels[i] = newPixels[i];
+    }
+    done = true;
   }
 
   if (slider.value() !== blackThreshold) {
     blackThreshold = slider.value();
     done = false;
+    console.log("change threshold");
   }
 
   updatePixels();
-  // if (done) {
-  //   noLoop();
-  // }
-  // console.log(newPixels.length);
 }
